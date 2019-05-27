@@ -1,0 +1,3 @@
+PeachPy==0.2.0
+pandas==0.24.2
+performance-features==0.1.2
