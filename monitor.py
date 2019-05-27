@@ -1,7 +1,6 @@
 from peachpy import *
 from peachpy.x86_64 import *
 from profiler import *
-from matplotlib import pyplot as plt
 from peachpy.literal import Constant
 import pandas as pd
 
@@ -31,12 +30,14 @@ def energy_consumed_inst(insts, args, rep= 30, verbose=0):
                 MOV(rax, 1)
                 MOV(rdx, 0)
                 myl= Label("loop")
+
                 LABEL( myl )
                 for _ in range(10):
                     inst(*arg)
                 ADD(rcx, 1)
                 CMP(rcx, 9999999)
                 JNE( myl )
+
                 RETURN(0)
 
             python_function = asm_function.finalize(abi.detect()).encode().load()
@@ -50,11 +51,11 @@ def energy_consumed_inst(insts, args, rep= 30, verbose=0):
                 data.append(prof.read_events())
 
             data= np.array(data).reshape(-1,2)
-            row= [inst(*arg).name, str(arg), data.mean(axis=0).astype(int)[1] ]
+            row= [inst(*arg).name, list(map(str,arg)), data.mean(axis=0).astype(int)[1] ]
             df.append(row)
 
             if verbose:
-                print(arg, data.mean(axis=0).astype(int), (data.std(axis=0)/data.mean(axis=0)*100).astype(int))
+                print(list(map(str,arg)), data.mean(axis=0).astype(int), (data.std(axis=0)/data.mean(axis=0)*100).astype(int))
 
     return df
 
@@ -93,7 +94,7 @@ def monitor_cpu(insts, args, csv_name):
             if is_valid_instruction(inst, arg):
                 if os.path.isfile(csv_name):
                     df= pd.read_csv(csv_name)
-                    if df[ (df["inst"].str.contains(inst(*arg).name)) &  (df["args"] == str(arg) ) ].shape[0] != 0: 
+                    if df[ (df["inst"].str.contains(inst(*arg).name)) &  (df["args"] == str(list(map(str,arg))) ) ].shape[0] != 0: 
                         continue
                 else:
                     pd.DataFrame([],columns=["inst","args","energy"]).to_csv(csv_name,index=False)
@@ -117,11 +118,11 @@ general_purposed= [ADD, SUB, ADC, SBB, ADCX, ADOX, AND, OR, XOR, ANDN, NOT, NEG,
         SETZ, SETNZ, SETPE, SETPO, JA, JNA, JAE, JNAE, JB, JNB, JBE, JNBE, JC, JNC,
         JE, JNE, JG, JNG, JGE, JNGE, JL, JNL, JLE, JNLE, JO, JNO, JP, JNP, JS, JNS,
         JZ, JNZ, JPE, JPO, JMP, JRCXZ, JECXZ, PAUSE, NOP, INT,
-        RDTSC, RDTSCP, STC, CLC, CMC, CLD, XADD, XCHG, CMPXCHG,
+        RDTSC, RDTSCP, STC, CLC, CMC, CLD, XCHG, CMPXCHG,
         CMPXCHG8B, CMPXCHG16B, SFENCE, MFENCE, LFENCE, PREFETCHNTA, PREFETCHT0, PREFETCHT1,
         PREFETCHT2, PREFETCH, PREFETCHW, PREFETCHWT1, CLFLUSH, CLFLUSHOPT, CLWB, CLZERO]
-        
-general_purposed_2= [PUSH, POP, RET, CALL, UD2, CPUID, XGETBV, SYSCALL, STD]
+
+general_purposed_2= [PUSH, POP, RET, CALL, UD2, CPUID, XGETBV, SYSCALL, STD, XADD]
 
 args= [
     [GeneralPurposeRegister64(0), GeneralPurposeRegister64(0), GeneralPurposeRegister64(0)],
