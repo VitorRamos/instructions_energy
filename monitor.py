@@ -4,6 +4,7 @@ from peachpy.literal import Constant
 from util import *
 from profiler import *
 import pandas as pd
+import numpy as np
 
 prof= Profiler([["PERF_COUNT_HW_INSTRUCTIONS"], ["SYSTEMWIDE:RAPL_ENERGY_PKG"]])
 prof.start_counters(pid=0)
@@ -104,9 +105,9 @@ def monitor_cpu(insts, args, csv_name):
                 pd.DataFrame(df,columns=["inst","args","energy"]).to_csv(csv_name,mode="a",header=False, index=False)
 
 
-# supported_inst(general_purposed, args)
-# monitor_cpu(general_purposed, args, "generic.csv")
-# supported_inst(mmxsse, mmxsse_args)
-# monitor_cpu(mmxsse, mmxsse_args, "mmx.csv")
-# supported_inst(avx, avx_args)
+supported_inst(generic, args_generic)
+monitor_cpu(generic, args_generic, "generic.csv")
+supported_inst(mmxsse, mmxsse_args)
+monitor_cpu(mmxsse, mmxsse_args, "mmx.csv")
+supported_inst(avx, avx_args)
 monitor_cpu(avx, avx_args, "avx.csv")
