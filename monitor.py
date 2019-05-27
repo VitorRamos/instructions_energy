@@ -1,7 +1,8 @@
 from peachpy import *
 from peachpy.x86_64 import *
-from profiler import *
 from peachpy.literal import Constant
+from util import *
+from profiler import *
 import pandas as pd
 
 prof= Profiler([["PERF_COUNT_HW_INSTRUCTIONS"], ["SYSTEMWIDE:RAPL_ENERGY_PKG"]])
@@ -9,7 +10,7 @@ prof.start_counters(pid=0)
 
 def is_valid_instruction(inst, args):
     try:
-        with Function("main", (), int32_t) as asm_function:
+        with Function("main", (), int32_t, target=uarch.default + isa.avx + isa.sse4_2) as asm_function:
             inst(*args)
             RETURN(0)
         asm_function.finalize(abi.detect())
@@ -25,7 +26,7 @@ def energy_consumed_inst(insts, args, rep= 30, verbose=0):
             print(inst(*args[0]).name)
 
         for arg in args:
-            with Function("main", (), int32_t) as asm_function:
+            with Function("main", (), int32_t, target=uarch.default + isa.avx + isa.sse4_2) as asm_function:
                 XOR(rcx,rcx)
                 MOV(rax, 1)
                 MOV(rdx, 0)
@@ -65,7 +66,7 @@ def supported_inst(insts, args):
         wrong_arg_flag= True
         for arg in args:
             try:
-                with Function("main", (), int32_t) as asm_function:
+                with Function("main", (), int32_t, target=uarch.default + isa.avx + isa.sse4_2) as asm_function:
                     inst(*arg)
                     RETURN(0)
                 asm_function.finalize(abi.detect())
@@ -86,7 +87,7 @@ def supported_inst(insts, args):
             # print("Wrong arg", inst)
             wrong_arg+=1
 
-    print(len(insts), suported, unsuported, wrong_arg)
+    print( "Total {}, Supported {}, Unsupported {}, Wrong arg {} ".format(len(insts), suported, unsuported, wrong_arg) )
 
 def monitor_cpu(insts, args, csv_name):
     for inst in insts:
@@ -102,54 +103,10 @@ def monitor_cpu(insts, args, csv_name):
                 df= energy_consumed_inst([inst], [arg], verbose=1)
                 pd.DataFrame(df,columns=["inst","args","energy"]).to_csv(csv_name,mode="a",header=False, index=False)
 
-general_purposed= [ADD, SUB, ADC, SBB, ADCX, ADOX, AND, OR, XOR, ANDN, NOT, NEG,
-        INC, DEC, TEST, CMP, MOV, MOVZX, MOVSX, MOVSXD, MOVBE, MOVNTI,
-        BT, BTS, BTR, BTC, POPCNT, BSWAP, BSF, BSR, LZCNT, TZCNT, SHR,
-        SAR, SHL, SAL, SHRX, SARX, SHLX, SHRD, SHLD, ROR, ROL, RORX, RCR,
-        RCL, IMUL, MUL, MULX, IDIV, DIV, LEA, POPCNT, LZCNT,
-        TZCNT, BEXTR, PDEP, PEXT, BZHI, BLCFILL, BLCI, BLCIC, BLCMSK, BLCS,
-        BLSFILL, BLSI, BLSIC, BLSMSK, BLSR, T1MSKC, TZMSK, CRC32, CBW, CDQ,
-        CQO, CWD, CWDE, CDQE, CMOVA, CMOVNA, CMOVAE, CMOVNAE, CMOVB, CMOVNB,
-        CMOVBE, CMOVNBE, CMOVC, CMOVNC, CMOVE, CMOVNE, CMOVG, CMOVNG, CMOVGE,
-        CMOVNGE, CMOVL, CMOVNL, CMOVLE, CMOVNLE, CMOVO, CMOVNO, CMOVP, CMOVNP,
-        CMOVS, CMOVNS, CMOVZ, CMOVNZ, CMOVPE, CMOVPO, SETA, SETNA, SETAE, SETNAE,
-        SETB, SETNB, SETBE, SETNBE, SETC, SETNC, SETE, SETNE, SETG, SETNG, SETGE,
-        SETNGE, SETL, SETNL, SETLE, SETNLE, SETO, SETNO, SETP, SETNP, SETS, SETNS,
-        SETZ, SETNZ, SETPE, SETPO, JA, JNA, JAE, JNAE, JB, JNB, JBE, JNBE, JC, JNC,
-        JE, JNE, JG, JNG, JGE, JNGE, JL, JNL, JLE, JNLE, JO, JNO, JP, JNP, JS, JNS,
-        JZ, JNZ, JPE, JPO, JMP, JRCXZ, JECXZ, PAUSE, NOP, INT,
-        RDTSC, RDTSCP, STC, CLC, CMC, CLD, XCHG, CMPXCHG,
-        CMPXCHG8B, CMPXCHG16B, SFENCE, MFENCE, LFENCE, PREFETCHNTA, PREFETCHT0, PREFETCHT1,
-        PREFETCHT2, PREFETCH, PREFETCHW, PREFETCHWT1, CLFLUSH, CLFLUSHOPT, CLWB, CLZERO]
-
-general_purposed_2= [PUSH, POP, RET, CALL, UD2, CPUID, XGETBV, SYSCALL, STD, XADD]
-
-args= [
-    [GeneralPurposeRegister64(0), GeneralPurposeRegister64(0), GeneralPurposeRegister64(0)],
-    [GeneralPurposeRegister64(0), GeneralPurposeRegister64(0), GeneralPurposeRegister64(1)],
-    [GeneralPurposeRegister64(0), GeneralPurposeRegister64(1), GeneralPurposeRegister64(2)],
-    [GeneralPurposeRegister64(0), GeneralPurposeRegister64(1), 0],
-    
-    [GeneralPurposeRegister64(0), GeneralPurposeRegister64(0)],
-    [GeneralPurposeRegister64(0), GeneralPurposeRegister64(1)],
-    [GeneralPurposeRegister64(0), 0],
-    
-    [GeneralPurposeRegister64(0)],
-    
-    [GeneralPurposeRegister8(0)],
-    
-    [],
-    
-    [GeneralPurposeRegister64(0), GeneralPurposeRegister32(0)],
-    [GeneralPurposeRegister64(0), GeneralPurposeRegister16(0)],
-    
-    [GeneralPurposeRegister64(0), Constant.uint64(1)],
-    [Constant.uint64(1), GeneralPurposeRegister64(0)],
-    
-    [Constant.uint64(1)],
-    
-    [Constant.uint64x2(1,1)],
-]
 
 # supported_inst(general_purposed, args)
-monitor_cpu(general_purposed, args, "energy_inst_1.csv")
+# monitor_cpu(general_purposed, args, "generic.csv")
+# supported_inst(mmxsse, mmxsse_args)
+# monitor_cpu(mmxsse, mmxsse_args, "mmx.csv")
+# supported_inst(avx, avx_args)
+monitor_cpu(avx, avx_args, "avx.csv")
